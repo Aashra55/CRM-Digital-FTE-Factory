@@ -1,0 +1,54 @@
+[
+  {
+    "id": "T001",
+    "customer_id": "C001",
+    "email": "john.doe@gmail.com",
+    "channel": "email",
+    "subject": "Resetting my password",
+    "message": "Hi, I've forgotten my password. Can you help me reset it?",
+    "received_at": "2026-03-18T10:00:00Z"
+  },
+  {
+    "id": "T002",
+    "customer_id": "C002",
+    "phone": "+1234567890",
+    "channel": "whatsapp",
+    "message": "Hey, how do I connect my GitHub account to TechCorp?",
+    "received_at": "2026-03-18T10:15:00Z"
+  },
+  {
+    "id": "T003",
+    "customer_id": "C003",
+    "email": "jane.smith@example.com",
+    "channel": "web_form",
+    "subject": "Billing issue",
+    "message": "I was charged $25 but I thought I was on the Basic plan. Please look into this.",
+    "received_at": "2026-03-18T10:30:00Z"
+  },
+  {
+    "id": "T004",
+    "customer_id": "C004",
+    "email": "bob.builder@gmail.com",
+    "channel": "email",
+    "subject": "How do I create a new project?",
+    "message": "Hello, I just signed up and I'm not sure how to start a new project. Any help?",
+    "received_at": "2026-03-18T11:00:00Z"
+  },
+  {
+    "id": "T005",
+    "customer_id": "C005",
+    "phone": "+9876543210",
+    "channel": "whatsapp",
+    "message": "My velocity chart isn't showing any data. What's wrong?",
+    "received_at": "2026-03-18T11:15:00Z"
+  },
+  {
+    "id": "T006",
+    "customer_id": "C006",
+    "email": "alice.wonder@example.com",
+    "channel": "web_form",
+    "subject": "Urgent: Account locked",
+    "message": "Hi, my account is locked and I can't log in. Please help me as soon as possible.",
+    "received_at": "2026-03-18T11:30:00Z"
+  }
+]

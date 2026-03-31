@@ -1,0 +1,94 @@
+# production/k8s/all-in-one.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fte-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fte-config
+  namespace: fte-system
+data:
+  ENVIRONMENT: "production"
+  DATABASE_URL: "postgresql://postgres:postgres@postgres-service.fte-system.svc.cluster.local:5432/fte_db"
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service.fte-system.svc.cluster.local:9092"
+  GMAIL_CREDENTIALS_PATH: "/etc/gmail/credentials.json"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fte-secrets
+  namespace: fte-system
+type: Opaque
+stringData:
+  OPENAI_API_KEY: "your-api-key-here"
+  TWILIO_ACCOUNT_SID: "your-sid"
+  TWILIO_AUTH_TOKEN: "your-token"
+  TWILIO_WHATSAPP_NUMBER: "whatsapp:+123456789"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fte-api
+  namespace: fte-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fte-api
+  template:
+    metadata:
+      labels:
+        app: fte-api
+    spec:
+      containers:
+      - name: fte-api
+        image: techcorp/fte-service:latest
+        command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: fte-config
+        - secretRef:
+            name: fte-secrets
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fte-worker
+  namespace: fte-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fte-worker
+  template:
+    metadata:
+      labels:
+        app: fte-worker
+    spec:
+      containers:
+      - name: fte-worker
+        image: techcorp/fte-service:latest
+        command: ["python", "workers/message_processor.py"]
+        envFrom:
+        - configMapRef:
+            name: fte-config
+        - secretRef:
+            name: fte-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fte-api-service
+  namespace: fte-system
+spec:
+  selector:
+    app: fte-api
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: LoadBalancer

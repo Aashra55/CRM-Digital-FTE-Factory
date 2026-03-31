@@ -1,0 +1,62 @@
+# docker-compose.yml
+services:
+  # Database: PostgreSQL with pgvector (Stable version)
+  db:
+    image: ankane/pgvector:latest
+    environment:
+      POSTGRES_DB: fte_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./production/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  # Messaging: Kafka (Zookeeper + Kafka using specific stable tags)
+  zookeeper:
+    image: bitnamilegacy/zookeeper:3.9.1
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnamilegacy/kafka:3.7.0
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  # Backend API
+  api:
+    build: 
+      context: ./production
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fte_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - kafka
+
+  # Agent Worker
+  worker:
+    build: 
+      context: ./production
+      dockerfile: Dockerfile
+    command: ["python", "workers/message_processor.py"]
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fte_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - db
+      - kafka
