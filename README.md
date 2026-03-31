@@ -181,7 +181,3 @@ If you want to run the application locally (without Docker) for faster debugging
 - **Docker Image Errors**: If you get a "Not Found" error for Bitnami images, ensure you are using the `bitnamilegacy` repository in `docker-compose.yml` for specific older versions.
 - **Kafka Connection**: If the worker fails to connect, wait a few seconds for Kafka to fully initialize before restarting the worker.
 - **Port Conflicts**: Ensure ports `5432`, `9092`, `2181`, and `8000` are free on your host machine.
-# CRM-Digital-FTE-Factory
-# CRM-Digital-FTE-Factory
-# CRM-Digital-FTE-Factory
-# CRM-Digital-FTE-Factory
