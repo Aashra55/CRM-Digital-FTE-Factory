@@ -15,18 +15,44 @@ This project is an **AI-driven Customer Success Full-Time Equivalent (FTE)** des
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Tech Stack & Use Cases
 
-- **Language**: Python 3.11
-- **API Framework**: FastAPI (Uvicorn)
-- **Agent Framework**: OpenAI Agents SDK (`openai-agents`)
-- **AI Engine**: Google Gemini API
-- **Message Broker**: Apache Kafka & Zookeeper (Bitnami images)
-- **Database**: PostgreSQL with `pgvector`
-- **Containerization**: Docker & Docker Compose
-- **Channels**:
-  - **WhatsApp**: Twilio API
-  - **Email**: Gmail API (OAuth2)
+Here is a breakdown of the technologies used and why they were chosen for this project:
+
+### 1. **Python 3.11** (The Core Language)
+- **Role**: The primary programming language for the entire backend.
+- **Why**: It is the industry standard for AI and data processing, offering excellent libraries for interacting with Gemini and Kafka.
+
+### 2. **FastAPI (Uvicorn)** (The Receptionist/API Gateway)
+- **Role**: Handles incoming webhooks from Web Forms, Gmail, and WhatsApp.
+- **Why**: It is extremely fast and automatically generates documentation. It acts as the entry point for all customer messages.
+
+### 3. **Google Gemini API** (The AI Brain)
+- **Role**: Understands user queries, generates human-like responses, and decides when to create tickets or escalate issues.
+- **Why**: It offers high-quality reasoning and handles long context (like product docs) better than most other AI models.
+
+### 4. **Apache Kafka & Zookeeper** (The Postman/Message Broker)
+- **Role**: Manages the flow of messages between the API and the AI Worker.
+- **Why**: It ensures that no message is lost even if the system is busy. It allows the system to handle hundreds of messages simultaneously by queuing them.
+
+### 5. **PostgreSQL with pgvector** (The Memory/Database)
+- **Role**: Stores customer profiles, conversation history, and support tickets.
+- **Why**: `pgvector` allows the AI to perform "Semantic Search," meaning it can find the most relevant answer in the Knowledge Base based on the *meaning* of the question, not just keywords.
+
+### 6. **Docker & Docker Compose** (The Portable Box)
+- **Role**: Packages the entire project (DB, Kafka, AI, API) into containers.
+- **Why**: It ensures the project runs exactly the same way on any computer (Windows, Mac, or Linux) without needing to install each tool manually.
+
+### 7. **OpenAI Agents SDK** (The Orchestrator)
+- **Role**: Manages how the AI uses "Tools" (like creating tickets or searching docs).
+- **Why**: It provides a structured way for the AI to "think" before it speaks, making sure it follows the required workflow (Ticket -> History -> Knowledge Base -> Response).
+
+### 8. **Gmail API, Twilio & Custom Web Form** (The Communication Channels)
+- **Role**: Connects the AI to the real world through Email, WhatsApp, and your Website.
+- **Why**: 
+    - **Gmail**: For formal support via email.
+    - **Twilio**: For instant support via WhatsApp.
+    - **Web Form**: A direct way for users to submit issues from your website.
 
 ---
 
