@@ -3,12 +3,24 @@
 import asyncpg
 import os
 import json
+import asyncio
 from datetime import datetime
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/fte_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fte_db")
 
 async def get_db_pool():
-    return await asyncpg.create_pool(DATABASE_URL)
+    retries = 10
+    while retries > 0:
+        try:
+            pool = await asyncpg.create_pool(DATABASE_URL)
+            print("Database connection established successfully")
+            return pool
+        except Exception as e:
+            retries -= 1
+            print(f"Database connection failed ({retries} retries left): {e}")
+            await asyncio.sleep(5)
+    
+    raise Exception("Could not connect to database after several attempts")
 
 async def resolve_customer(conn, email=None, phone=None, name=None):
     """Resolve customer by email or phone, or create a new one."""

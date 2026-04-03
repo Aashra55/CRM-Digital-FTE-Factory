@@ -9,7 +9,7 @@ import os
 import json
 from database.queries import create_ticket as db_create_ticket, get_conversation_history, update_ticket_status
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/fte_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fte_db")
 
 class Channel(str, Enum):
     EMAIL = "email"
@@ -21,7 +21,7 @@ class KnowledgeSearchInput(BaseModel):
     max_results: int = Field(5, description="Maximum number of results to return.")
 
 class TicketInput(BaseModel):
-    customer_id: str = Field(..., description="The unique ID of the customer.")
+    customer_id: str = Field(..., description="The unique ID of the customer (must be a valid UUID).")
     issue: str = Field(..., description="Brief description of the issue.")
     priority: str = Field("medium", description="Priority level: low, medium, high.")
     category: Optional[str] = Field(None, description="Category of the issue.")
@@ -49,21 +49,23 @@ async def search_knowledge_base(input: KnowledgeSearchInput) -> str:
 @function_tool
 async def create_ticket(input: TicketInput) -> str:
     """Create a support ticket for tracking."""
-    conn = await asyncpg.connect(DATABASE_URL)
     try:
+        conn = await asyncpg.connect(DATABASE_URL)
         # In a real tool, conversation_id should be passed in context
         # Here we mock/assume a conversation_id for simplicity of tool definition
         ticket_id = await db_create_ticket(conn, None, input.customer_id, input.channel.value, input.category, input.priority)
-        return f"Ticket successfully created. Ticket ID: {ticket_id}"
-    finally:
         await conn.close()
+        return f"Ticket successfully created. Ticket ID: {ticket_id}"
+    except Exception as e:
+        return f"Error creating ticket: {str(e)}"
 
 @function_tool
 async def get_customer_history(customer_id: str) -> str:
     """Get customer's complete interaction history across ALL channels."""
-    conn = await asyncpg.connect(DATABASE_URL)
     try:
+        conn = await asyncpg.connect(DATABASE_URL)
         history = await get_conversation_history(conn, customer_id)
+        await conn.close()
         if not history:
             return "No previous interaction history found for this customer."
         
@@ -71,8 +73,8 @@ async def get_customer_history(customer_id: str) -> str:
         for h in history:
             formatted.append(f"[{h['created_at'].strftime('%Y-%m-%d %H:%M')}] {h['role']} via {h['channel']}: {h['content'][:100]}...")
         return "\n".join(formatted)
-    finally:
-        await conn.close()
+    except Exception as e:
+        return f"Error fetching history: {str(e)}"
 
 @function_tool
 async def escalate_to_human(ticket_id: str, reason: str) -> str:

@@ -3,6 +3,8 @@ services:
   # Database: PostgreSQL with pgvector (Stable version)
   db:
     image: ankane/pgvector:latest
+    networks:
+      - crm-net
     environment:
       POSTGRES_DB: fte_db
       POSTGRES_USER: postgres
@@ -15,6 +17,8 @@ services:
   # Messaging: Kafka (Zookeeper + Kafka using specific stable tags)
   zookeeper:
     image: bitnamilegacy/zookeeper:3.9.1
+    networks:
+      - crm-net
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     ports:
@@ -22,6 +26,8 @@ services:
 
   kafka:
     image: bitnamilegacy/kafka:3.7.0
+    networks:
+      - crm-net
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - ALLOW_PLAINTEXT_LISTENER=yes
@@ -37,6 +43,10 @@ services:
     build: 
       context: ./production
       dockerfile: Dockerfile
+    networks:
+      - crm-net
+    volumes:
+      - ./production:/app
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fte_db
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
@@ -52,6 +62,10 @@ services:
     build: 
       context: ./production
       dockerfile: Dockerfile
+    networks:
+      - crm-net
+    volumes:
+      - ./production:/app
     command: ["python", "workers/message_processor.py"]
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fte_db
@@ -60,3 +74,7 @@ services:
     depends_on:
       - db
       - kafka
+
+networks:
+  crm-net:
+    driver: bridge

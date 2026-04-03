@@ -165,7 +165,43 @@ If you want to run the application locally (without Docker) for faster debugging
 
 ---
 
-## 🛠 Commands Reference
+## 🚀 Commands Reference
+
+Use these commands depending on which part of the system you want to run.
+
+### 1. Full System (Recommended)
+Starts everything: Database, Kafka, API (Web Form), and Worker (Gmail/WhatsApp).
+```bash
+docker-compose up --build
+```
+
+### 2. Web Form Only (User Queries)
+If you only want to use the Web Form to send queries and receive AI replies via email.
+```bash
+docker-compose up api
+```
+*Access the form at: `http://localhost:8000`*
+
+### 3. Gmail Inbox Processing (Auto-Reply)
+If you want the AI to read an authorized Gmail inbox and reply to new emails automatically.
+```bash
+docker-compose up worker
+```
+
+### 4. Stopping the System
+```bash
+docker-compose down
+```
+
+### 5. Restart & Reset (After changing API Keys or Models)
+Use this to stop all services and restart the worker with a fresh state.
+```bash
+docker-compose down && docker-compose up worker
+```
+
+---
+
+## 🛠 Quick Commands Reference
 
 | Task | Command |
 | :--- | :--- |
@@ -176,8 +212,59 @@ If you want to run the application locally (without Docker) for faster debugging
 
 ---
 
+## 📧 Gmail Authorization Guide
+
+To let the AI read your emails, you must authorize it once. Follow these steps:
+
+1. **Start the Worker**: Run `docker-compose up worker`.
+2. **Find the Link**: Look at the terminal logs for a message saying `GMAIL AUTHENTICATION REQUIRED`.
+3. **Authorize**: Copy the long URL (starting with `https://accounts.google.com...`), paste it into your browser, and click "Allow".
+4. **Get the Code**: You will land on a page that fails to load (localhost:8080). Look at the URL bar and copy the text after `code=`.
+5. **Save the Code**: Create a file named `production/auth_code.txt` and paste that code inside it.
+6. **Done**: The worker will detect the file, create `token.json`, and start processing your inbox.
+
+---
+
+## 🛠 Manual Development (Non-Docker)
+
+If you want to run services directly on your machine:
+
+1. **Install dependencies**:
+   ```bash
+   cd production
+   pip install -r requirements.txt
+   ```
+2. **Start the API**:
+   ```bash
+   uvicorn api.main:app --reload
+   ```
+3. **Start the Worker**:
+   ```bash
+   python workers/message_processor.py
+   ```
+   *(Note: You still need Kafka and Postgres running in the background via Docker).*
+
+---
+
+## 🧪 Testing
+
+To verify the AI agent logic without sending real emails:
+```bash
+docker-compose run api pytest production/test_gemini_agent.py
+```
+
+---
+
 ## ⚠️ Troubleshooting
 
 - **Docker Image Errors**: If you get a "Not Found" error for Bitnami images, ensure you are using the `bitnamilegacy` repository in `docker-compose.yml` for specific older versions.
 - **Kafka Connection**: If the worker fails to connect, wait a few seconds for Kafka to fully initialize before restarting the worker.
 - **Port Conflicts**: Ensure ports `5432`, `9092`, `2181`, and `8000` are free on your host machine.
+
+---
+
+## 🔑 Key Configuration
+- **Gemini Model**: Configured in `production/agent/customer_success_agent.py`.
+- **Environment**: Set your `GEMINI_API_KEY` in the root `.env` file.
+- **Database**: Postgres runs on port `5432`.
+- **API**: FastAPI runs on port `8000`.

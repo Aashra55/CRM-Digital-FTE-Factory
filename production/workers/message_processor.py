@@ -5,6 +5,7 @@ import logging
 from kafka_client import FTEKafkaConsumer, FTEKafkaProducer, TOPICS
 from agents import Runner
 from agent.customer_success_agent import customer_success_agent
+from agent.prompts import CUSTOMER_SUCCESS_SYSTEM_PROMPT
 from agent.tools import Channel
 from channels.gmail_handler import GmailHandler
 from channels.whatsapp_handler import WhatsAppHandler
@@ -27,6 +28,9 @@ class UnifiedMessageProcessor:
         self.pool = await get_db_pool()
         await self.producer.start()
         
+        # Start Gmail polling in background
+        asyncio.create_task(self.gmail_polling_loop())
+        
         consumer = FTEKafkaConsumer(
             topics=[TOPICS['tickets_incoming']],
             group_id='fte-message-processor'
@@ -35,6 +39,20 @@ class UnifiedMessageProcessor:
         
         logger.info("Message processor started, listening for tickets...")
         await consumer.consume(self.process_message)
+
+    async def gmail_polling_loop(self):
+        """Periodically poll Gmail for new messages."""
+        logger.info("Gmail polling loop started")
+        while True:
+            try:
+                new_messages = await self.gmail.poll_messages()
+                for msg in new_messages:
+                    logger.info(f"Found new Gmail message from {msg['customer_email']}")
+                    await self.producer.publish(TOPICS['tickets_incoming'], msg)
+            except Exception as e:
+                logger.error(f"Error in Gmail polling loop: {e}")
+            
+            await asyncio.sleep(60) # Poll every minute
     
     async def process_message(self, topic, message):
         """Process a single incoming message from any channel."""
@@ -65,18 +83,15 @@ class UnifiedMessageProcessor:
                     message.get('channel_message_id')
                 )
                 
-                # 4. Load conversation history (for agent)
-                history_data = await conn.fetch(
-                    "SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC",
-                    conversation_id
-                )
-                messages = [{"role": h['role'], "content": h['content']} for h in history_data]
+                # 4. Run agent with dynamic context in prompt
+                dynamic_instructions = f"{CUSTOMER_SUCCESS_SYSTEM_PROMPT}\n\nCURRENT CONTEXT:\n- customer_id: {customer_id}\n- channel: {channel.value}"
                 
-                # 5. Run agent
-                runner = Runner()
-                result = await runner.run(
-                    agent=customer_success_agent,
-                    messages=messages,
+                # We update the agent instructions temporarily for this run
+                customer_success_agent.instructions = dynamic_instructions
+                
+                result = await Runner.run(
+                    starting_agent=customer_success_agent,
+                    input=message['content'],
                     context={
                         'customer_id': str(customer_id),
                         'conversation_id': str(conversation_id),
@@ -89,6 +104,11 @@ class UnifiedMessageProcessor:
                 latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
                 
                 # 7. Store agent response
+                # Note: RunResult might not have .tool_calls directly, checking safely
+                tc_data = []
+                if hasattr(result, 'tool_calls'):
+                    tc_data = [tc.to_dict() for tc in result.tool_calls]
+                
                 await store_message(
                     conn, 
                     conversation_id, 
@@ -97,7 +117,7 @@ class UnifiedMessageProcessor:
                     'agent', 
                     result.final_output, 
                     latency_ms=int(latency_ms),
-                    tool_calls=[tc.to_dict() for tc in result.tool_calls]
+                    tool_calls=tc_data
                 )
                 
                 # 8. Send response via channel
@@ -108,7 +128,7 @@ class UnifiedMessageProcessor:
                     'event_type': 'message_processed',
                     'channel': channel.value,
                     'latency_ms': latency_ms,
-                    'tool_calls_count': len(result.tool_calls)
+                    'tool_calls_count': len(tc_data)
                 })
                 
                 logger.info(f"Processed {channel.value} message for customer {customer_id}")

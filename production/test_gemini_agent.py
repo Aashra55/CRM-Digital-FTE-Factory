@@ -13,17 +13,15 @@ async def test_agent():
         print("ERROR: GEMINI_API_KEY not found in environment!")
         return
 
-    runner = Runner()
-    
     # Simulate a user message
     user_query = "Hey, I'm having trouble connecting my GitHub integration. Can you help?"
     
     print(f"User Query: {user_query}")
     print("Processing...")
-    
-    result = await runner.run(
-        agent=customer_success_agent,
-        messages=[{"role": "user", "content": user_query}],
+
+    result = await Runner.run(
+        starting_agent=customer_success_agent,
+        input=[{"role": "user", "content": user_query}],
         context={"channel": "whatsapp", "customer_id": "test-user-99"}
     )
     
