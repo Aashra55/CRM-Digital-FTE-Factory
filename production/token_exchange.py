@@ -10,7 +10,7 @@ os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 # The exact parameters from the worker logs
 CLIENT_SECRETS_FILE = "credentials.json"
 SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
-REDIRECT_URI = "http://localhost:39285/"
+REDIRECT_URI = "http://localhost:8080/"
 
 def main():
     if len(sys.argv) < 2:

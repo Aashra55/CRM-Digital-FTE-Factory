@@ -156,7 +156,7 @@ If you want to run the application locally (without Docker) for faster debugging
 ### Steps
 1. **Clone the repository**:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/Aashra55/CRM-Digital-FTE-Factory
    cd CRM_Digital_FTE
    ```
 

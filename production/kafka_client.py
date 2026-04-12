@@ -46,6 +46,8 @@ class FTEKafkaProducer:
             await self.producer.start()
         except Exception as e:
             print(f"Failed to start Kafka Producer: {e}")
+            self.producer = None
+            raise
         
     async def stop(self):
         if self.producer:
@@ -53,11 +55,14 @@ class FTEKafkaProducer:
         
     async def publish(self, topic: str, event: dict):
         if not self.producer:
-            print("Warning: Kafka producer not started, skipping publish")
+            print(f"Warning: Kafka producer not started, cannot publish to {topic}")
             return
         event["timestamp"] = datetime.utcnow().isoformat()
         try:
-            await self.producer.send_and_wait(topic, event)
+            # Add a timeout to prevent hanging the entire request
+            await asyncio.wait_for(self.producer.send_and_wait(topic, event), timeout=5.0)
+        except asyncio.TimeoutError:
+            print(f"Timeout error publishing to {topic}")
         except Exception as e:
             print(f"Error publishing to {topic}: {e}")
 

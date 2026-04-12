@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime
 import os
 import json
+import asyncio
 from kafka_client import FTEKafkaProducer, TOPICS
 
 app = FastAPI(
@@ -237,6 +238,7 @@ async def health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/support/submit", response_model=SupportFormResponse)
+@app.post("/api/support/submit", response_model=SupportFormResponse)
 async def submit_support_form(submission: SupportFormSubmission):
     """Handle support form submission."""
     ticket_id = str(uuid.uuid4())

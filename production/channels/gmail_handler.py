@@ -16,8 +16,10 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 class GmailHandler:
     def __init__(self, credentials_path: str = None):
-        self.credentials_path = credentials_path or os.getenv('GMAIL_CREDENTIALS_PATH', 'credentials.json')
-        self.token_path = 'token.json'
+        # Use absolute paths based on the directory where this file resides
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.credentials_path = credentials_path or os.getenv('GMAIL_CREDENTIALS_PATH', os.path.join(base_dir, 'credentials.json'))
+        self.token_path = os.path.join(base_dir, 'token.json')
         self.service = self._authenticate()
         
     def _authenticate(self):
@@ -63,20 +65,26 @@ class GmailHandler:
             
             print("\n" + "="*60)
             print("GMAIL AUTHENTICATION REQUIRED")
-            print(f"1. Open this URL: {auth_url}")
+            print(f"1. Open this URL in your browser: {auth_url}")
             print("2. Authorize the app.")
-            print("3. Copy the 'code' from the failing URL and put it in 'auth_code.txt'.")
+            print("3. Copy the 'code' parameter from the URL (e.g., 4/0A...)")
+            print(f"4. Create a file named 'auth_code.txt' in the production folder with ONLY that code.")
+            print("Waiting for auth_code.txt...")
             print("="*60 + "\n")
             
             import time
-            auth_code_file = 'auth_code.txt'
-            for _ in range(60): # Wait 5 minutes
+            # Check for auth_code.txt in the same directory as credentials.json
+            auth_code_file = os.path.join(os.path.dirname(self.credentials_path), 'auth_code.txt')
+            for i in range(120): # Wait 10 minutes
                 if os.path.exists(auth_code_file):
+                    print(f"Found auth_code.txt! Fetching token...")
                     with open(auth_code_file, 'r') as f:
                         code = f.read().strip()
                     os.remove(auth_code_file)
                     flow.fetch_token(code=code)
                     return flow.credentials
+                if i % 6 == 0: # Print every 30 seconds
+                    print(f"Still waiting for {auth_code_file}... ({i*5}s elapsed)")
                 time.sleep(5)
                 
             return None
