@@ -28,8 +28,8 @@ class UnifiedMessageProcessor:
         self.pool = await get_db_pool()
         await self.producer.start()
         
-        # Start Gmail polling in background
-        asyncio.create_task(self.gmail_polling_loop())
+        # Start Gmail polling in background (Commented out to save API quota)
+        # asyncio.create_task(self.gmail_polling_loop())
         
         consumer = FTEKafkaConsumer(
             topics=[TOPICS['tickets_incoming']],
@@ -89,16 +89,30 @@ class UnifiedMessageProcessor:
                 # We update the agent instructions temporarily for this run
                 customer_success_agent.instructions = dynamic_instructions
                 
-                result = await Runner.run(
-                    starting_agent=customer_success_agent,
-                    input=message['content'],
-                    context={
-                        'customer_id': str(customer_id),
-                        'conversation_id': str(conversation_id),
-                        'channel': channel.value,
-                        'ticket_subject': message.get('subject', 'Support Request')
-                    }
-                )
+                # Retry loop for agent execution
+                max_retries = 2
+                for attempt in range(max_retries):
+                    try:
+                        result = await Runner.run(
+                            starting_agent=customer_success_agent,
+                            input=message['content'],
+                            context={
+                                'customer_id': str(customer_id),
+                                'conversation_id': str(conversation_id),
+                                'channel': channel.value,
+                                'ticket_subject': message.get('subject', 'Support Request')
+                            }
+                        )
+                        break
+                    except Exception as e:
+                        if "503" in str(e) or "429" in str(e):
+                            if attempt == max_retries - 1:
+                                raise
+                            wait = (10 * (attempt + 1))
+                            logger.warning(f"Agent failed with {e}, retrying in {wait}s...")
+                            await asyncio.sleep(wait)
+                        else:
+                            raise
                 
                 # 6. Calculate latency
                 latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000

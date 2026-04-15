@@ -259,33 +259,25 @@ async def submit_support_form(submission: SupportFormSubmission):
         estimated_response_time="Usually within 5 minutes"
     )
 
-@app.post("/webhooks/gmail")
-async def gmail_webhook(request: Request):
-    """Handle simulated Gmail messages."""
-    body = await request.json()
-    event = {
-        "channel": "email",
-        "customer_email": body.get("customer_email"),
-        "customer_name": body.get("customer_name", "Email User"),
-        "subject": body.get("subject", "No Subject"),
-        "content": body.get("content", ""),
-        "thread_id": body.get("thread_id", str(uuid.uuid4()))
-    }
-    await producer.publish(TOPICS['tickets_incoming'], event)
-    return {"status": "sent to processing", "channel": "email"}
+from channels.whatsapp_handler import WhatsAppHandler
+whatsapp_handler = WhatsAppHandler()
 
 @app.post("/webhooks/whatsapp")
 async def whatsapp_webhook(request: Request):
-    """Handle simulated WhatsApp messages."""
-    body = await request.json()
-    event = {
-        "channel": "whatsapp",
-        "customer_phone": body.get("customer_phone"),
-        "customer_name": body.get("customer_name", "WhatsApp User"),
-        "content": body.get("content", "")
-    }
+    """Handle real WhatsApp messages from Twilio."""
+    # Twilio sends data as Form parameters
+    form_data = await request.form()
+    data = dict(form_data)
+
+    # Use the handler to parse Twilio's format
+    event = await whatsapp_handler.process_webhook(data)
+
+    # Add to Kafka for processing
     await producer.publish(TOPICS['tickets_incoming'], event)
+
+    # Twilio expects a 200 OK or TwiML response
     return {"status": "sent to processing", "channel": "whatsapp"}
+
 
 if __name__ == "__main__":
     import uvicorn

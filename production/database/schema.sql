@@ -4,6 +4,7 @@
 -- =============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Customers table (unified across channels)
 CREATE TABLE customers (
